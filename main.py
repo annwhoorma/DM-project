@@ -69,7 +69,7 @@ def save_files(save_to, save_to_day, filenames, dicts):
                 f.write(f'S\t{key}\t{volume}\n')
 
 
-def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[int]]], instr: str, action: int, buysell: str, volume: int, price: int):
+def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[int]]], instr: str, action: int, buysell: str, volume: int, price: int, traderprice: int):
     if not instr in instr_dicts[buysell]:
         return
     instr_dict = instr_dicts[buysell][instr]
@@ -77,7 +77,7 @@ def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[in
     if price in instr_dict:
         # update
         if action == 0 or action == 2:
-            instr_dict[price] -= volume
+            instr_dict[price if action == 0 else traderprice] -= volume
         elif action == 1:
             instr_dict[price] += volume
         # check volume size - IN THE NEW VERSION I DO IT IN THE END
@@ -90,8 +90,10 @@ def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[in
 
 def remove_non_positive_volumes(dicti):
     for instr in INSTRUMENTS:
-        dicti['B'][instr] = {k: v for k, v in dicti['B'][instr].items() if v > 0}
-        dicti['S'][instr] = {k: v for k, v in dicti['S'][instr].items() if v > 0}
+        dicti['B'][instr] = {k: v for k,
+                             v in dicti['B'][instr].items() if v > 0}
+        dicti['S'][instr] = {k: v for k,
+                             v in dicti['S'][instr].items() if v > 0}
     return dicti
 
 
@@ -100,14 +102,14 @@ def one_day(filename, read_from_folder, save_to_month):
     print(f'{read_from_folder}/{filename}')
     df = read_csv(f'{read_from_folder}/{filename}',
                   sep=',', index_col=0)
-    df = df.drop(labels=['ORDERNO', 'TRADENO', 'TRADEPRICE'], axis=1)
+    df = df.drop(labels=['ORDERNO', 'TRADENO'], axis=1)
     df = df[df['TIME'] <= ENDS]
 
     files, instr_dicts, save_to_day = generate_names(filename, df.columns)
 
     df.apply(lambda row: helper_loop(files, instr_dicts,
                                      row['SECCODE'], row['ACTION'], row['BUYSELL'],
-                                     row['VOLUME'], row['PRICE']), axis=1)
+                                     row['VOLUME'], row['PRICE'], row['TRADERPRICE']), axis=1)
 
     instr_dicts = remove_non_positive_volumes(instr_dicts)
     save_files(save_to_month, save_to_day, files, instr_dicts)
