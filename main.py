@@ -1,4 +1,4 @@
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, concat
 from time import time
 from os import listdir, mkdir, path
 from shutil import rmtree
@@ -22,7 +22,12 @@ INSTRUMENTS = ['USD000000TOD',
                'EURUSD000TOM']
 
 BEGINS = 100000000000
-ENDS = 235000000000
+ENDS = {'USD000000TOD': 174500000000,
+        'USD000UTSTOM': 235000000000,
+        'EUR_RUB__TOD': 150000000000,
+        'EUR_RUB__TOM': 235000000000,
+        'EURUSD000TOM': 235000000000,
+        'EURUSD000TOD': 150000000000}
 
 
 def generate_names(filename, headers):
@@ -36,8 +41,13 @@ def generate_names(filename, headers):
     return files, lists, date
 
 
+def sort_dict(d):
+    newdict = {}
+    for key in sorted(d, reverse=True):
+        newdict[key] = d[key]
+    return newdict
+
 def save_files(save_to, save_to_day, filenames, dicts):
-    # create a folder
     dirname1 = f'{save_to}'
     dirname2 = f'{save_to_day}'
     if not path.exists(dirname1):
@@ -50,41 +60,34 @@ def save_files(save_to, save_to_day, filenames, dicts):
     for instr in INSTRUMENTS:
         buy_dict = dicts['B'][instr]
         sell_dict = dicts['S'][instr]
-        # print(f'INSTRUMENT: {instr}')
+        buy_dict, sell_dict = sort_dict(buy_dict), sort_dict(sell_dict)
         with open(f'{dirname1}/{dirname2}/{filenames[instr]}', 'w') as f:
-            # print(f'\tFILE: {dirname2}/{filenames[instr]}')
-            # print(f'\tBUY:\n{dicts["B"][instr]}')
-            # print(f'\tSELL:\n{dicts["S"][instr]}')
-            for key in buy_dict:
-                # key - price, value - volume
-                volume = dicts['B'][instr][key]
-                if volume < 0:
-                    continue
-                f.write(f'B\t{key}\t{volume}\n')
             for key in sell_dict:
                 # key - price, value - volume
                 volume = dicts['S'][instr][key]
-                if volume < 0:
-                    continue
                 f.write(f'S\t{key}\t{volume}\n')
+            f.write('-----------------------------\n')
+            for key in buy_dict:
+                # key - price, value - volume
+                volume = dicts['B'][instr][key]
+                f.write(f'B\t{key}\t{volume}\n')
 
 
-def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[int]]], instr: str, action: int, buysell: str, volume: int, price: int, traderprice: int):
-    if not instr in instr_dicts[buysell]:
+def helper_loop(files: Dict[str, str], instr_dicts: Dict[str, Dict[int, Tuple[int]]], instr: str, time: int, action: int, buysell: str, volume: int, price: int):
+    if not instr in instr_dicts[buysell] or time > ENDS[instr]:
         return
     instr_dict = instr_dicts[buysell][instr]
+    
     # check if this price already exists
     if price in instr_dict:
-        # update
         if action == 0 or action == 2:
-            instr_dict[price if action == 0 else traderprice] -= volume
+            instr_dict[price] -= volume
         elif action == 1:
             instr_dict[price] += volume
         # check volume size - IN THE NEW VERSION I DO IT IN THE END
-        # if instr_dict[price] <= 0:
-        #     instr_dict.pop(price)
+        if instr_dict[price] <= 0:
+            instr_dict.pop(price)
     elif (action == 1):
-        # create a new row
         instr_dict[price] = volume
 
 
@@ -102,14 +105,13 @@ def one_day(filename, read_from_folder, save_to_month):
     print(f'{read_from_folder}/{filename}')
     df = read_csv(f'{read_from_folder}/{filename}',
                   sep=',', index_col=0)
-    df = df.drop(labels=['ORDERNO', 'TRADENO'], axis=1)
-    df = df[df['TIME'] <= ENDS]
+    df = df.drop(labels=['ORDERNO', 'TRADENO', 'TRADEPRICE'], axis=1)
 
     files, instr_dicts, save_to_day = generate_names(filename, df.columns)
 
     df.apply(lambda row: helper_loop(files, instr_dicts,
-                                     row['SECCODE'], row['ACTION'], row['BUYSELL'],
-                                     row['VOLUME'], row['PRICE'], row['TRADERPRICE']), axis=1)
+                                     row['SECCODE'], row['TIME'], row['ACTION'], row['BUYSELL'],
+                                     row['VOLUME'], row['PRICE']), axis=1)
 
     instr_dicts = remove_non_positive_volumes(instr_dicts)
     save_files(save_to_month, save_to_day, files, instr_dicts)
