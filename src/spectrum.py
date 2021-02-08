@@ -94,18 +94,18 @@ class SpectrumDay:
         def normalize_pdf(old_pdf, divisor):
             return old_pdf if divisor == 0 else {key: old_pdf[key]/divisor for key in old_pdf}
 
-        # do it for sell
-        sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
-        sell_volumes = create_pdf(sell_prices)
-        FULL_SELL_VOLUME = sum(sell_volumes.values())
-
         # do it for buy
         buy_prices = sort_dict(instr_dicts['B'][instr], reverse=True)
         buy_volumes = create_pdf(buy_prices)
         FULL_BUY_VOLUME = sum(buy_volumes.values())
 
-        relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
+        # do it for sell
+        sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
+        sell_volumes = create_pdf(sell_prices)
+        FULL_SELL_VOLUME = sum(sell_volumes.values())
+
         relative_buy_volumes = normalize_pdf(buy_volumes, FULL_BUY_VOLUME)
+        relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
 
         self.append_to_file(instr, time, list(
-            relative_sell_volumes.values()) + list(relative_buy_volumes.values()))
+            relative_buy_volumes.values()) + list(relative_sell_volumes.values()))
