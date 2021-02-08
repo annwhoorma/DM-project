@@ -76,9 +76,7 @@ class SpectrumDay:
 
     # instr_dict: (price, volume)
     def one_day(self, instr_dicts, time, instr):
-        FULL_VOLUME = 0
-
-        def temp(dic):
+        def create_pdf(dic):
             volumes = {i: 0 for i in range(0, 10)}
             if not bool(dic):
                 return volumes
@@ -93,22 +91,21 @@ class SpectrumDay:
                     volumes[part] += price
             return volumes
 
+        def normalize_pdf(old_pdf, divisor):
+            return old_pdf if divisor == 0 else {key: old_pdf[key]/divisor for key in old_pdf}
+
         # do it for sell
         sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
-        sell_volumes = temp(sell_prices)
-        FULL_VOLUME += sum(sell_volumes.values())
+        sell_volumes = create_pdf(sell_prices)
+        FULL_SELL_VOLUME = sum(sell_volumes.values())
 
         # do it for buy
         buy_prices = sort_dict(instr_dicts['B'][instr], reverse=True)
-        buy_volumes = temp(buy_prices)
-        FULL_VOLUME += sum(buy_volumes.values())
+        buy_volumes = create_pdf(buy_prices)
+        FULL_BUY_VOLUME = sum(buy_volumes.values())
 
-        if FULL_VOLUME == 0:
-            return sell_volumes, buy_volumes
+        relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
+        relative_buy_volumes = normalize_pdf(buy_volumes, FULL_BUY_VOLUME)
 
-        relative_sell_volumes = {
-            key: sell_volumes[key]/FULL_VOLUME for key in sell_volumes}
-        relative_buy_volumes = {
-            key: buy_volumes[key]/FULL_VOLUME for key in buy_volumes}
-        
-        self.append_to_file(instr, time, list(relative_sell_volumes.values()) + list(relative_buy_volumes.values()))
+        self.append_to_file(instr, time, list(
+            relative_sell_volumes.values()) + list(relative_buy_volumes.values()))
