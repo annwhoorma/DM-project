@@ -1,0 +1,7 @@
+src/__pycache__
+src/*.c
+cython/build
+cython/*.cpython-*
+MOEX-FX/
+ORDERBOOKS*/
+SPECTRUM*/
