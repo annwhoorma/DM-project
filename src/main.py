@@ -68,6 +68,7 @@ def main():
     spectrum_dir = create_res_dir(SPECTRUM_DATA_FOLDER)
 
     for month_i in range(len(all_data)):
+        # uncomment if you want to run only for one file
         filename = 'OrderLog20180301.txt'
         print(f'{filename}')
         read_from_folder = f'{DATA_FOLDER}/{MONTHS[month_i]}'
@@ -94,3 +95,4 @@ def main():
         #     spectrum.close_files()
 
 main()
+

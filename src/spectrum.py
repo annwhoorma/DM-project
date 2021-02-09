@@ -1,5 +1,6 @@
 from pandas import DataFrame, read_csv
 from os import remove, path
+from time import sleep
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -76,36 +77,57 @@ class SpectrumDay:
 
     # instr_dict: (price, volume)
     def one_day(self, instr_dicts, time, instr):
-        def create_pdf(dic):
+        def create_pdf(dic, reverse):
+            # reverse is for buy_volumes
             volumes = {i: 0 for i in range(0, 10)}
             if not bool(dic):
                 return volumes
-            limit_sell = min(dic)
+            best_price = max(dic) if reverse else min(dic)
             mult = PRICE_STEPS[instr]*RANGE
             # split into 10 parts
-            distribution = {i: [price for price in dic.keys() if (
-                price >= limit_sell+i*mult/10 and price < limit_sell+(i+1)*mult/10)] for i in range(0, 10, 1)}
+            distribution = None
+            if reverse:
+                distribution = {i: [dic[price] for price in dic.keys() if (
+                    price > best_price-(10-i)*mult/10 and price <= best_price-(9-i)*mult/10)] for i in range(9, -1, -1)}
+            else:
+                distribution = {i: [dic[price] for price in dic.keys() if (
+                    price >= best_price+i*mult/10 and price < best_price+(i+1)*mult/10)] for i in range(0, 10)}
             # sum over the volumes within each part
-            for part in distribution:
-                for price in distribution[part]:
-                    volumes[part] += price
+            for key in distribution:
+                for volume in distribution[key]:
+                    volumes[key] += volume
             return volumes
 
         def normalize_pdf(old_pdf, divisor):
             return old_pdf if divisor == 0 else {key: old_pdf[key]/divisor for key in old_pdf}
 
         # do it for buy
-        buy_prices = sort_dict(instr_dicts['B'][instr], reverse=True)
-        buy_volumes = create_pdf(buy_prices)
+        buy_prices = sort_dict(instr_dicts['B'][instr], reverse=False)
+        buy_volumes = create_pdf(buy_prices, reverse=True)
         FULL_BUY_VOLUME = sum(buy_volumes.values())
 
         # do it for sell
         sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
-        sell_volumes = create_pdf(sell_prices)
+        sell_volumes = create_pdf(sell_prices, reverse=False)
         FULL_SELL_VOLUME = sum(sell_volumes.values())
 
         relative_buy_volumes = normalize_pdf(buy_volumes, FULL_BUY_VOLUME)
         relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
+
+        # if (instr == 'EUR_RUB__TOD'):
+        #     # print('BUY:')
+        #     print(instr_dicts['B'][instr])
+        #     # print('BUY prices:')
+        #     print(buy_volumes)
+        #     print(relative_buy_volumes)
+        #     # print('SELL dictionary:')
+        #     # print(instr_dicts['S'][instr])
+        #     # print('SELL prices:')
+        #     # print(relative_sell_volumes)
+        #     print(list(relative_buy_volumes.values()))
+        #     print('----------------------------------------------------------------------------------------')
+
+        #     sleep(2)
 
         self.append_to_file(instr, time, list(
             relative_buy_volumes.values()) + list(relative_sell_volumes.values()))
