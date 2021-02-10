@@ -10,6 +10,15 @@ MONTHS = ['2018-03', '2018-04', '2018-05']
 
 FILE_FOR_PRICE_STEPS = f'{DATA_FOLDER}/2018-03/OrderLog20180301.txt'
 
+BEGINS = 100000000000
+
+ENDS = {'USD000000TOD': 174500000000,
+        'USD000UTSTOM': 235000000000,
+        'EUR_RUB__TOD': 150000000000,
+        'EUR_RUB__TOM': 235000000000,
+        'EURUSD000TOM': 235000000000,
+        'EURUSD000TOD': 150000000000}
+
 INSTRUMENTS = ['USD000000TOD',
                'USD000UTSTOM',
                'EUR_RUB__TOD',
@@ -20,6 +29,12 @@ INSTRUMENTS = ['USD000000TOD',
 PRICE_STEPS = {key: 10000 for key in INSTRUMENTS}
 RANGE = 50
 SUB_RANGE = 5
+WRITE_TIME = {'USD000000TOD': False,
+              'USD000UTSTOM': False,
+              'EUR_RUB__TOD': False,
+              'EUR_RUB__TOM': False,
+              'EURUSD000TOM': False,
+              'EURUSD000TOD': False}
 
 
 def sort_dict(d, reverse):
@@ -65,11 +80,19 @@ class SpectrumDay:
         self.files = open_files(path, files)
 
     def append_to_file(self, instr, time, volumes):
+        global WRITE_TIME
         f = self.files[instr]
+        if WRITE_TIME[instr]:
+            f.write(f'{time}\n')
+        WRITE_TIME[instr] = True
         f.write(f'{time},')
         for volume in volumes:
             f.write(f'{volume},')
-        f.write(',\n')
+
+    def append_last_time(self):
+        for instr in INSTRUMENTS:
+            f = self.files[instr]
+            f.write(ENDS[instr])
 
     def close_files(self):
         for f in self.files.values():
@@ -113,21 +136,6 @@ class SpectrumDay:
 
         relative_buy_volumes = normalize_pdf(buy_volumes, FULL_BUY_VOLUME)
         relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
-
-        # if (instr == 'EUR_RUB__TOD'):
-        #     # print('BUY:')
-        #     print(instr_dicts['B'][instr])
-        #     # print('BUY prices:')
-        #     print(buy_volumes)
-        #     print(relative_buy_volumes)
-        #     # print('SELL dictionary:')
-        #     # print(instr_dicts['S'][instr])
-        #     # print('SELL prices:')
-        #     # print(relative_sell_volumes)
-        #     print(list(relative_buy_volumes.values()))
-        #     print('----------------------------------------------------------------------------------------')
-
-        #     sleep(2)
 
         self.append_to_file(instr, time, list(
             relative_buy_volumes.values()) + list(relative_sell_volumes.values()))

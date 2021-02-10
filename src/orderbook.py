@@ -66,7 +66,6 @@ def helper_loop(instr_dicts: Dict[str, Dict[int, int]], instr: str, time: int,
 
     if spectrum_obj != None:
         spectrum_obj.one_day(instr_dicts, time, instr)
-        
 
 
 def remove_non_positive_volumes(dicti):
@@ -84,6 +83,6 @@ def one_day_orderbook(df, instr_dicts, filenames, path, spectrum_obj=None):
 
     df.apply(lambda row: helper_loop(instr_dicts, row['SECCODE'], int(row['TIME']), row['ACTION'], row['BUYSELL'],
                                      row['VOLUME'], row['PRICE'], spectrum_obj), axis=1)
-
+    spectrum_obj.append_last_time()
     # instr_dicts = remove_non_positive_volumes(instr_dicts)
     save_orderbook(path, filenames, instr_dicts)
