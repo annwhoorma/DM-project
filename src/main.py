@@ -2,6 +2,7 @@ from orderbook import one_day_orderbook
 from spectrum import SpectrumDay
 from pandas import read_csv
 from os import listdir, mkdir, path
+from average import AverageDay
 
 INSTRUMENTS = ['USD000000TOD',
                'USD000UTSTOM',
@@ -10,10 +11,13 @@ INSTRUMENTS = ['USD000000TOD',
                'EURUSD000TOD',
                'EURUSD000TOM']
 DATA_FOLDER = '../MOEX-FX'
+
 ORDERBOOKS_DATA_FOLDER = '../ORDERBOOKS'
 SPECTRUM_DATA_FOLDER = '../SPECTRUM'
-MONTHS = ['2018-03', '2018-04', '2018-05']
+AVG_DATA_FOLDER = '../AVERAGE'
 
+MONTHS = ['2018-03', '2018-04', '2018-05']
+SPECTRUM_MONTHS = ['2018-03']
 
 def remove_tradelogs(all_data):
     new_all_data = [[] for i in range(len(all_data))]
@@ -25,6 +29,7 @@ def remove_tradelogs(all_data):
 
 
 def create_res_dir(name):
+    # return name
     if not path.exists(name):
         mkdir(name)
         return name
@@ -61,38 +66,35 @@ def generate_files_names(filename, headers):
     return files, lists, date
 
 
-def main():
+def main12():
+    # tasks 1 and 2:
     all_data = [listdir(f'{DATA_FOLDER}/{month}') for month in MONTHS]
     all_data = remove_tradelogs(all_data)
     orderbooks_dir = create_res_dir(ORDERBOOKS_DATA_FOLDER)
     spectrum_dir = create_res_dir(SPECTRUM_DATA_FOLDER)
 
     for month_i in range(len(all_data)):
-        # uncomment if you want to run only for one file
-        filename = 'OrderLog20180301.txt'
-        print(f'{filename}')
-        read_from_folder = f'{DATA_FOLDER}/{MONTHS[month_i]}'
-        orderbooks_save_to_month = f'{orderbooks_dir}/{MONTHS[month_i]}'
-        spectrum_save_to_month = f'{spectrum_dir}/{MONTHS[month_i]}'
+        for filename in all_data[month_i]:
+            print(f'{filename}')
+            read_from_folder = f'{DATA_FOLDER}/{MONTHS[month_i]}'
+            orderbooks_save_to_month = f'{orderbooks_dir}/{MONTHS[month_i]}'
+            spectrum_save_to_month = f'{spectrum_dir}/{MONTHS[month_i]}'
 
-        # orderbook
-        df = read_csv(f'{read_from_folder}/{filename}', sep=',', index_col=0)
-        files, instr_dicts, save_to_day = generate_files_names(filename, df.columns)
-        spectrum = SpectrumDay(create_path(spectrum_save_to_month, save_to_day), files)
-        one_day_orderbook(df, instr_dicts, files, create_path(orderbooks_save_to_month, save_to_day), spectrum)
-        spectrum.close_files()
-        # for filename in all_data[month_i]:
-        #     print(f'{filename}')
-        #     read_from_folder = f'{DATA_FOLDER}/{MONTHS[month_i]}'
-        #     orderbooks_save_to_month = f'{orderbooks_dir}/{MONTHS[month_i]}'
-        #     spectrum_save_to_month = f'{spectrum_dir}/{MONTHS[month_i]}'
+            df = read_csv(f'{read_from_folder}/{filename}', sep=',', index_col=0)
+            files, instr_dicts, save_to_day = generate_files_names(filename, df.columns)
 
-        #     # orderbook
-        #     df = read_csv(f'{read_from_folder}/{filename}', sep=',', index_col=0)
-        #     files, instr_dicts, save_to_day = generate_files_names(filename, df.columns)
-        #     spectrum = SpectrumDay(create_path(spectrum_save_to_month, save_to_day), files)
-        #     one_day_orderbook(df, instr_dicts, files, create_path(orderbooks_save_to_month, save_to_day), spectrum)
-        #     spectrum.close_files()
+            spectrum = SpectrumDay(create_path(spectrum_save_to_month, save_to_day), files)
+            one_day_orderbook(df, instr_dicts, files, create_path(orderbooks_save_to_month, save_to_day), spectrum)
+            spectrum.close_files()
+        
 
-main()
+def main3():
+    average_dir = create_res_dir(AVG_DATA_FOLDER)
+    spectrum_data = {month: listdir(f'{SPECTRUM_DATA_FOLDER}/{month}') for month in SPECTRUM_MONTHS}
+    for month in spectrum_data:
+        days = spectrum_data[month]
+        for day in days:
+            average = AverageDay(create_path(f'{average_dir}/{month}', day), f'{SPECTRUM_DATA_FOLDER}/{month}/{day}/')
+            average.run()
 
+main3()

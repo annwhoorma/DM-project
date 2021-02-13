@@ -5,19 +5,18 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 DATA_FOLDER = '../MOEX-FX'
-RES_DATA_FOLDER = '../SPECTRUM'
 MONTHS = ['2018-03', '2018-04', '2018-05']
 
 FILE_FOR_PRICE_STEPS = f'{DATA_FOLDER}/2018-03/OrderLog20180301.txt'
 
 BEGINS = 100000000000
 
-ENDS = {'USD000000TOD': 174500000000,
-        'USD000UTSTOM': 235000000000,
-        'EUR_RUB__TOD': 150000000000,
-        'EUR_RUB__TOM': 235000000000,
-        'EURUSD000TOM': 235000000000,
-        'EURUSD000TOD': 150000000000}
+ENDS = {'USD000000TOD': '174500000000',
+        'USD000UTSTOM': '235000000000',
+        'EUR_RUB__TOD': '150000000000',
+        'EUR_RUB__TOM': '235000000000',
+        'EURUSD000TOM': '235000000000',
+        'EURUSD000TOD': '150000000000'}
 
 INSTRUMENTS = ['USD000000TOD',
                'USD000UTSTOM',
@@ -76,7 +75,6 @@ def open_files(folders, files):
 class SpectrumDay:
     def __init__(self, path, files):
         fill_price_steps(FILE_FOR_PRICE_STEPS)
-        self.path = path
         self.files = open_files(path, files)
 
     def append_to_file(self, instr, time, volumes):
