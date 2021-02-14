@@ -29,7 +29,7 @@ def remove_tradelogs(all_data):
 
 
 def create_res_dir(name):
-    # return name
+    return name 
     if not path.exists(name):
         mkdir(name)
         return name
