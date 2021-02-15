@@ -46,9 +46,14 @@ class AverageDay:
         PATH = spectrum_path
         self.files = open_files(avg_dir, files)
 
-    def write_to_file(self, instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf):
+    def write_to_file(self, instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf, period):
         f = self.files[instr]
-        f.write("AVERAGE BY VALUE [BIDS] <PDF, CDF>:\n")
+        if period=='all':
+            f.write(f'ENTIRE DAY:')
+        else:
+            f.write(f'\n\nPERIOD: {period}')
+
+        f.write("\nAVERAGE BY VALUE [BIDS] <PDF, CDF>:\n")
         for avcount in avg_count_pdf[:10]:
             f.write(f'{str(avcount)} ')
         f.write('\n')
@@ -77,18 +82,18 @@ class AverageDay:
             f.write(f'{str(ti)} ')
         # f.close()
 
-    def average_by_time(self, theta):
-        columns = self.df.columns.tolist()
+    def average_by_time(self, df, theta):
+        columns = df.columns.tolist()
         columns.remove('time_diff')
         temp_df = DataFrame(columns=columns)
         for column in columns:
             temp_df[column] = (
-                (self.df['time_diff'] * self.df[column]) / (theta - BEGINS)).values.tolist()
+                (df['time_diff'] * df[column]) / (theta - BEGINS)).values.tolist()
         return temp_df.sum(axis=0)
 
-    def average_by_count(self):
-        coeff = len(self.df.index)
-        sums = self.df.sum(axis=0).tolist()
+    def average_by_count(self, df):
+        coeff = len(df.index)
+        sums = df.sum(axis=0).tolist()
         res = []
         for s in sums:
             res.append(s/coeff)
@@ -115,23 +120,38 @@ class AverageDay:
         f.write(f'\ncount: bid vs ask: {results["test1"]}')
         f.write(f'\ntime: bid vs ask: {results["test2"]}')
         f.write(f'\ncount bid vs time ask: {results["test3"]}')
-        f.write(f'\ntime bid vs count ask: {results["test4"]}')        
-        f.close()
+        f.write(f'\ntime bid vs count ask: {results["test4"]}')
 
-    def run(self):
+    def do_one_df(self, df, instr, period):
+        df['time_diff'] = (df[21]-df[0]).values.tolist()
+        df = df.drop(labels=[0, 21], axis=1)
+
+        avg_time_pdf = self.average_by_time(df, ENDS[instr])
+        df = df.drop(labels=['time_diff'], axis=1)
+        avg_count_pdf = self.average_by_count(df)
+        time_cdf = self.create_cdf(avg_time_pdf)
+        count_cdf = self.create_cdf(avg_count_pdf)
+
+        self.write_to_file(instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf, period=period)
+
+        tests_results = self.run_tests(time_cdf, count_cdf)
+        self.save_tests(tests_results, instr)
+
+    def run(self, TOM_instrs=False, time_periods=[]):
         for instr in INSTRUMENTS:
+            if TOM_instrs and ENDS[instr] != 235000000000:
+                continue
             df = read_csv(f'{PATH}{instr}.txt', sep=',', header=None)
-            df['time_diff'] = (df[21]-df[0]).values.tolist()
-            self.df = df.drop(labels=[0, 21], axis=1)
 
-            avg_time_pdf = self.average_by_time(ENDS[instr])
-            self.df = self.df.drop(labels=['time_diff'], axis=1)
-            avg_count_pdf = self.average_by_count()
-            time_cdf = self.create_cdf(avg_time_pdf)
-            count_cdf = self.create_cdf(avg_count_pdf)
-            self.write_to_file(instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf)
+            self.period_dfs = {'all': df}
 
-            tests_results = self.run_tests(time_cdf, count_cdf)
-            self.save_tests(tests_results, instr)
+            if len(time_periods) > 0:
+                for time_period in time_periods:
+                    start, end = time_period
+                    self.period_dfs[f'{start}-{end}'] = df.loc[(df[0] >= start) & (df[0] < end)]
+            
+            for period in self.period_dfs:
+                cur_df = self.period_dfs[period]
+                self.do_one_df(cur_df, instr, period)
 
         close_files(self.files.values())

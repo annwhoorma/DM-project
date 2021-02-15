@@ -29,7 +29,7 @@ def remove_tradelogs(all_data):
 
 
 def create_res_dir(name):
-    return name 
+    # return name + '_0'
     if not path.exists(name):
         mkdir(name)
         return name
@@ -95,6 +95,10 @@ def main3():
         days = spectrum_data[month]
         for day in days:
             average = AverageDay(create_path(f'{average_dir}/{month}', day), f'{SPECTRUM_DATA_FOLDER}/{month}/{day}/')
-            average.run()
+            time_periods = [(100000000000, 150000000000),
+                            (150000000000, 190000000000),
+                            (190000000000, 235000000000)]
+            average.run(TOM_instrs=True, time_periods=time_periods)
 
-main3()
+# main3()
+main12()

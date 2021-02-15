@@ -117,6 +117,10 @@ class SpectrumDay:
             for key in distribution:
                 for volume in distribution[key]:
                     volumes[key] += volume
+            # if reverse then switch the order so that it's easier to compare statistics later
+            order = [i for i in range(len(volumes)-1, -1, -1)]
+            if reverse:
+                volumes = [volumes[i] for i in order]
             return volumes
 
         def normalize_pdf(old_pdf, divisor):
@@ -124,11 +128,13 @@ class SpectrumDay:
 
         # do it for buy
         buy_prices = sort_dict(instr_dicts['B'][instr], reverse=False)
+        # reverse=True is for bids, so they will be from best price to worst price
         buy_volumes = create_pdf(buy_prices, reverse=True)
         FULL_BUY_VOLUME = sum(buy_volumes.values())
 
         # do it for sell
         sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
+        # reverse=False for asks, so they will be from best price to worst price
         sell_volumes = create_pdf(sell_prices, reverse=False)
         FULL_SELL_VOLUME = sum(sell_volumes.values())
 
