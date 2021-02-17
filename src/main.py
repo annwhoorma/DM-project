@@ -29,7 +29,6 @@ def remove_tradelogs(all_data):
 
 
 def create_res_dir(name):
-    # return name + '_0'
     if not path.exists(name):
         mkdir(name)
         return name
@@ -75,6 +74,8 @@ def main12():
 
     for month_i in range(len(all_data)):
         for filename in all_data[month_i]:
+            if filename != 'OrderLog20180301.txt':
+                continue
             print(f'{filename}')
             read_from_folder = f'{DATA_FOLDER}/{MONTHS[month_i]}'
             orderbooks_save_to_month = f'{orderbooks_dir}/{MONTHS[month_i]}'
@@ -100,5 +101,5 @@ def main3():
                             (190000000000, 235000000000)]
             average.run(TOM_instrs=True, time_periods=time_periods)
 
-# main3()
-main12()
+# main12()
+main3()

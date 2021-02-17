@@ -108,8 +108,10 @@ class SpectrumDay:
             # split into 10 parts
             distribution = None
             if reverse:
+                # distribution = {i: [dic[price] for price in dic.keys() if (
+                #     price > best_price-(10-i)*mult/10 and price <= best_price-(9-i)*mult/10)] for i in range(9, -1, -1)}
                 distribution = {i: [dic[price] for price in dic.keys() if (
-                    price > best_price-(10-i)*mult/10 and price <= best_price-(9-i)*mult/10)] for i in range(9, -1, -1)}
+                    price <= best_price-(i)*mult/10 and price > best_price-(i+1)*mult/10)] for i in range(0, 10)}
             else:
                 distribution = {i: [dic[price] for price in dic.keys() if (
                     price >= best_price+i*mult/10 and price < best_price+(i+1)*mult/10)] for i in range(0, 10)}
@@ -117,10 +119,6 @@ class SpectrumDay:
             for key in distribution:
                 for volume in distribution[key]:
                     volumes[key] += volume
-            # if reverse then switch the order so that it's easier to compare statistics later
-            order = [i for i in range(len(volumes)-1, -1, -1)]
-            if reverse:
-                volumes = [volumes[i] for i in order]
             return volumes
 
         def normalize_pdf(old_pdf, divisor):

@@ -111,7 +111,6 @@ class AverageDay:
 
     def run_tests(self, time_cdf, count_cdf):
         test = Test(count_cdf[:10], count_cdf[10:20], time_cdf[:10], time_cdf[10:20])
-        print(test.get_results())
         return test.get_results()
 
     def save_tests(self, results, instr):
