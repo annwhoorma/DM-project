@@ -2,7 +2,8 @@ from orderbook import one_day_orderbook
 from spectrum import SpectrumDay
 from pandas import read_csv
 from os import listdir, mkdir, path
-from average import AverageDay
+from day_average import AverageDay
+from periods_average import TomAverageDay
 
 INSTRUMENTS = ['USD000000TOD',
                'USD000UTSTOM',
@@ -15,6 +16,7 @@ DATA_FOLDER = '../MOEX-FX'
 ORDERBOOKS_DATA_FOLDER = '../ORDERBOOKS'
 SPECTRUM_DATA_FOLDER = '../SPECTRUM'
 AVG_DATA_FOLDER = '../AVERAGE'
+TOM_AVG_DATA_FOLDER = '../AVERAGE_TOM'
 
 MONTHS = ['2018-03', '2018-04', '2018-05']
 SPECTRUM_MONTHS = ['2018-03']
@@ -29,6 +31,7 @@ def remove_tradelogs(all_data):
 
 
 def create_res_dir(name):
+    return name
     if not path.exists(name):
         mkdir(name)
         return name
@@ -91,15 +94,21 @@ def main12():
 
 def main3():
     average_dir = create_res_dir(AVG_DATA_FOLDER)
+    tom_average_dir = create_res_dir(TOM_AVG_DATA_FOLDER)
+    tom_average_dir_var1 = create_res_dir(f'{tom_average_dir}/VAR1')
+    tom_average_dir_var2 = create_res_dir(f'{tom_average_dir}/VAR2')
     spectrum_data = {month: listdir(f'{SPECTRUM_DATA_FOLDER}/{month}') for month in SPECTRUM_MONTHS}
+    
+    tom_average = TomAverageDay(tom_average_dir_var1, tom_average_dir_var2)
+
     for month in spectrum_data:
         days = spectrum_data[month]
         for day in days:
-            average = AverageDay(create_path(f'{average_dir}/{month}', day), f'{SPECTRUM_DATA_FOLDER}/{month}/{day}/')
-            time_periods = [(100000000000, 150000000000),
-                            (150000000000, 190000000000),
-                            (190000000000, 235000000000)]
-            average.run(TOM_instrs=True, time_periods=time_periods)
+            path_to_spectrum = f'{SPECTRUM_DATA_FOLDER}/{month}/{day}/'
+            average = AverageDay(create_path(f'{average_dir}/{month}', day), path_to_spectrum)
+            average.run()
+            
+            tom_average.run(path_to_spectrum)
 
-# main12()
-main3()
+main12()
+# main3()
