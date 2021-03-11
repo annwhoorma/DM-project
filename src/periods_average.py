@@ -3,6 +3,7 @@ from shutil import rmtree
 from os import path, remove
 from typing import List, Dict, Tuple
 from kolmogorov_smirnov import kolmogorov_smirnov
+from threading import Thread
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -31,10 +32,10 @@ var2_columns = ['Day', '10:00-15:00', '15:00-19:00', '19:00-23:50']
 CUR_DAY = 0
 
 # day_number: [morn_vs_noon, morn_vs_eve, noon_vs_eve]
-DATA_VAR1 = {instr: {key: [] for key in range(1, 65)} for instr in INSTRUMENTS_TOM}
+DATA_VAR1 = {instr: {key: [] for key in range(1, 2)} for instr in INSTRUMENTS_TOM}
 # day_number: [10-15, 15-19, 19-23:50]
-DATA_VAR2 = {instr: {key: [] for key in range(1, 65)} for instr in INSTRUMENTS_TOM}
-
+DATA_VAR2 = {instr: {key: [] for key in range(2, 3)} for instr in INSTRUMENTS_TOM}
+PREV = {instr: {key: [] for key in range(1, 2)} for instr in INSTRUMENTS_TOM}
 
 def open_files(folders, files, var):
     files_dict = {}
@@ -103,10 +104,13 @@ class TomAverageDay:
         noon_vs_eve = (kolmogorov_smirnov(noon[:10], eve[:10]), kolmogorov_smirnov(noon[10:20], eve[10:20]))
         DATA_VAR1[instr][CUR_DAY] = [mor_vs_noon, mor_vs_eve, noon_vs_eve]
 
+        # save
+        PREV[instr][CUR_DAY] = [mor, noon, eve]
+
         # var 2
         if CUR_DAY == 1:
             return
-        prev_day_data = DATA_VAR2[instr][CUR_DAY-1]
+        prev_day_data = PREV[instr][CUR_DAY-1]
         prev_mor = prev_day_data[0]
         prev_noon = prev_day_data[1]
         prev_eve = prev_day_data[2]
@@ -124,17 +128,31 @@ class TomAverageDay:
                 day = DATA_VAR1[instr][day_number]
                 f.write(f'{day_number},{day[0]},{day[1]},{day[2]}\n')
             # var 2
-            f = self.files_var1[instr]
+            f = self.files_var2[instr]
+            print(DATA_VAR2[instr])
             for day_number in DATA_VAR2[instr]:
                 day = DATA_VAR2[instr][day_number]
+                print(day)
+                print(day[0])
+                print(day[1])
+                print(day[2])
+                print()
                 f.write(f'{day_number},{day[0]},{day[1]},{day[2]}\n')
+        # close_files(list(self.files_var1.values()))
+        # close_files(list(self.files_var2.values()))
 
     def run(self, spectrum_path):
         global CUR_DAY
         CUR_DAY += 1
         for instr in INSTRUMENTS_TOM:
-            df = read_csv(f'{spectrum_path}{instr}.txt', sep=',', header=None)
+            filename = f'{spectrum_path}{instr}.txt'
+            with open(filename, 'r') as f:
+                first_line = f.readline()
+                if first_line == '' or first_line == '\n' or first_line[0] == ' ':
+                    continue
 
+            df = read_csv(filename, sep=',', header=None)
+            
             self.period_dfs = {}
             self.cdfs = {}
 
@@ -147,11 +165,9 @@ class TomAverageDay:
                 cur_df = self.period_dfs[period]
                 self.cdfs[period] = self.do_one_df(cur_df, instr, period)
             self.compare_cdfs_pairwise(instr)
-
+        
         if CUR_DAY == 64:
             self.write_to_file()
-        print(DATA_VAR1, '\n\n')
-        print(DATA_VAR2, '\n\n')
-
-        close_files(list(self.files_var1.values()))
-        close_files(list(self.files_var2.values()))
+            close_files(list(self.files_var1.values()))
+            close_files(list(self.files_var2.values()))
+            print('finished files')

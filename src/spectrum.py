@@ -1,6 +1,8 @@
 from pandas import DataFrame, read_csv
 from os import remove, path
 from time import sleep
+from feature5_2 import Feature2
+from time import sleep
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -34,7 +36,8 @@ WRITE_TIME = {'USD000000TOD': False,
               'EUR_RUB__TOM': False,
               'EURUSD000TOM': False,
               'EURUSD000TOD': False}
-
+            
+MAX_BAND = 10000000
 
 def sort_dict(d, reverse):
     newdict = {}
@@ -73,13 +76,19 @@ def open_files(folders, files):
 
 
 class SpectrumDay:
-    def __init__(self, path, files):
+    def __init__(self, path, files, feature_vwap, feature_spread):
+        global WRITE_TIME
+        for key in WRITE_TIME:
+            WRITE_TIME[key] = False
         fill_price_steps(FILE_FOR_PRICE_STEPS)
         self.files = open_files(path, files)
+        self.feature_vwap = feature_vwap
+        self.feature_spread = feature_spread
 
     def append_to_file(self, instr, time, volumes):
         global WRITE_TIME
         f = self.files[instr]
+        # bug here?
         if WRITE_TIME[instr]:
             f.write(f'{time}\n')
         WRITE_TIME[instr] = True
@@ -93,6 +102,8 @@ class SpectrumDay:
             f.write(ENDS[instr])
 
     def close_files(self):
+        self.feature_vwap.write_to_file()
+        self.feature_spread.write_to_file()
         for f in self.files.values():
             f.close()
 
@@ -121,23 +132,24 @@ class SpectrumDay:
                     volumes[key] += volume
             return volumes
 
-        def normalize_pdf(old_pdf, divisor):
+        def normalize_pdf(old_pdf, divisor=MAX_BAND):
             return old_pdf if divisor == 0 else {key: old_pdf[key]/divisor for key in old_pdf}
 
         # do it for buy
         buy_prices = sort_dict(instr_dicts['B'][instr], reverse=False)
         # reverse=True is for bids, so they will be from best price to worst price
         buy_volumes = create_pdf(buy_prices, reverse=True)
-        FULL_BUY_VOLUME = sum(buy_volumes.values())
 
         # do it for sell
         sell_prices = sort_dict(instr_dicts['S'][instr], reverse=False)
         # reverse=False for asks, so they will be from best price to worst price
         sell_volumes = create_pdf(sell_prices, reverse=False)
-        FULL_SELL_VOLUME = sum(sell_volumes.values())
 
-        relative_buy_volumes = normalize_pdf(buy_volumes, FULL_BUY_VOLUME)
-        relative_sell_volumes = normalize_pdf(sell_volumes, FULL_SELL_VOLUME)
+        relative_buy_volumes = normalize_pdf(buy_volumes)
+        relative_sell_volumes = normalize_pdf(sell_volumes)
 
         self.append_to_file(instr, time, list(
             relative_buy_volumes.values()) + list(relative_sell_volumes.values()))
+        
+        self.feature_vwap.run(instr, time, sell_prices.copy(), buy_prices.copy())
+        self.feature_spread.run(instr, time, sell_prices.copy(), buy_prices.copy())

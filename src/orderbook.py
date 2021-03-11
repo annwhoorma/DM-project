@@ -1,6 +1,7 @@
 from pandas import DataFrame, read_csv
 from shutil import rmtree
 from typing import List, Dict, Tuple
+from threading import Thread
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -64,8 +65,7 @@ def helper_loop(instr_dicts: Dict[str, Dict[int, int]], instr: str, time: int,
     elif (action == 1):
         instr_dict[price] = volume
 
-    if spectrum_obj != None:
-        spectrum_obj.one_day(instr_dicts, time, instr)
+    spectrum_obj.one_day(instr_dicts, time, instr)
 
 
 def remove_non_positive_volumes(dicti):
@@ -80,9 +80,12 @@ def remove_non_positive_volumes(dicti):
 def one_day_orderbook(df, instr_dicts, filenames, path, spectrum_obj=None):
     # create a folder for each day which will contain 6 instruments
     df = df.drop(labels=['ORDERNO', 'TRADENO', 'TRADEPRICE'], axis=1)
+    df = df.loc[df['SECCODE'].isin(INSTRUMENTS)]
 
     df.apply(lambda row: helper_loop(instr_dicts, row['SECCODE'], int(row['TIME']), row['ACTION'], row['BUYSELL'],
                                      row['VOLUME'], row['PRICE'], spectrum_obj), axis=1)
     spectrum_obj.append_last_time()
     # instr_dicts = remove_non_positive_volumes(instr_dicts)
-    save_orderbook(path, filenames, instr_dicts)
+    # thread = Thread(target=save_orderbook, args=(path, filenames, instr_dicts))
+    # thread.start()
+    # thread.join()

@@ -3,6 +3,8 @@ from shutil import rmtree
 from os import path, remove
 from typing import List, Dict, Tuple
 from kolmogorov_smirnov import Test
+from threading import Thread
+from typing import List, Dict, Tuple
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -26,7 +28,7 @@ PATH = '../SPECTRUM/'
 MONTHS = ['2018-03', '2018-04', '2018-05']
 
 
-def open_files(folders, files):
+def open_files(folders: str, files: Dict[str, str]):
     # copied from spectrum.py
     files_dict = {}
     for f in files:
@@ -35,18 +37,18 @@ def open_files(folders, files):
         files_dict[f] = open(f'{folders}/{files[f]}', 'w')
     return files_dict
 
-def close_files(files):
+def close_files(files: List):
     for f in files:
         f.close()
 
 class AverageDay:
-    def __init__(self, avg_dir, spectrum_path):
+    def __init__(self, avg_dir: str, spectrum_path: str):
         files = {instr: f'{instr}.txt' for instr in INSTRUMENTS}
         global PATH
         PATH = spectrum_path
         self.files = open_files(avg_dir, files)
 
-    def write_to_file(self, instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf, period):
+    def write_to_file(self, instr: str, avg_count_pdf: List, avg_time_pdf: List, count_cdf: List, time_cdf: List, period: str):
         f = self.files[instr]
         if period=='all':
             f.write(f'ENTIRE DAY:')
@@ -91,7 +93,7 @@ class AverageDay:
                 (df['time_diff'] * df[column]) / (theta - BEGINS)).values.tolist()
         return temp_df.sum(axis=0)
 
-    def average_by_count(self, df):
+    def average_by_count(self, df: DataFrame):
         coeff = len(df.index)
         sums = df.sum(axis=0).tolist()
         res = []
@@ -99,7 +101,7 @@ class AverageDay:
             res.append(s/coeff)
         return res
 
-    def create_cdf(self, pdfs):
+    def create_cdf(self, pdfs: List):
         bids = pdfs[:10]
         asks = pdfs[10:20]
         bids_cdf = [0 for i in range(len(bids))]
@@ -109,7 +111,7 @@ class AverageDay:
             asks_cdf[i] = sum(asks[:i])
         return bids_cdf + asks_cdf
 
-    def run_tests(self, time_cdf, count_cdf):
+    def run_tests(self, time_cdf: List, count_cdf: List):
         test = Test(count_cdf[:10], count_cdf[10:20], time_cdf[:10], time_cdf[10:20])
         return test.get_results_day()
 
@@ -121,7 +123,7 @@ class AverageDay:
         f.write(f'\ncount bid vs time ask: {results["test3"]}')
         f.write(f'\ntime bid vs count ask: {results["test4"]}')
 
-    def do_one_df(self, df, instr, period):
+    def do_one_df(self, df: DataFrame, instr: str, period: str):
         df['time_diff'] = (df[21]-df[0]).values.tolist()
         df = df.drop(labels=[0, 21], axis=1)
 
@@ -131,7 +133,9 @@ class AverageDay:
         time_cdf = self.create_cdf(avg_time_pdf)
         count_cdf = self.create_cdf(avg_count_pdf)
 
-        self.write_to_file(instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf, period=period)
+        thread = Thread(target=self.write_to_file, args=(instr, avg_count_pdf, avg_time_pdf, count_cdf, time_cdf, period))
+        thread.start()
+        thread.join()
 
         tests_results = self.run_tests(time_cdf, count_cdf)
         self.save_tests(tests_results, instr)
@@ -140,7 +144,14 @@ class AverageDay:
         for instr in INSTRUMENTS:
             if TOM_instrs and ENDS[instr] != 235000000000:
                 continue
-            df = read_csv(f'{PATH}{instr}.txt', sep=',', header=None)
+
+            filename = f'{PATH}/{instr}.txt'
+            with open(filename, 'r') as f:
+                first_line = f.readline()
+                if first_line == '' or first_line == '\n' or first_line[0] == ' ':
+                    continue
+
+            df = read_csv(filename, sep=',', header=None)
 
             self.period_dfs = {'all': df}
 
